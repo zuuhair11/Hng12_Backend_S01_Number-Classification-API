@@ -1,76 +1,120 @@
-from fastapi import FastAPI, Query
-import requests
-from typing import Dict
-from math import sqrt
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
+import requests
+from typing import List, Dict, Union
+import math
 
 app = FastAPI()
 
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to Number Classification API"}
+
+def is_armstrong(n: int) -> bool:
+    """Check if a number is an Armstrong number."""
+    if n < 0:
+        return False
+    
+    str_n = str(n)
+    power = len(str_n)
+    return sum(int(digit) ** power for digit in str_n) == n
+
+
 def is_prime(n: int) -> bool:
+    """Check if a number is prime."""
     if n < 2:
         return False
-
-    for i in range(2, int(sqrt(n)) + 1):
+    
+    for i in range(2, int(math.sqrt(n)) + 1):
         if n % i == 0:
             return False
-
     return True
 
 
 def is_perfect(n: int) -> bool:
     if n < 1:
         return False
+    
+    sum_factors = sum(i for i in range(1, n) if n % i == 0)
+    return sum_factors == n
 
-    return sum([i for i in range(1, n) if n % i == 0]) == n
+
+def get_properties(n: int) -> List[str]:
+    """Get the properties of a number (armstrong, odd/even, positive/negative)."""
+    properties = []
+    
+    if n > 0:
+        properties.append("positive")
+    elif n < 0:
+        properties.append("negative")
+    else:
+        properties.append("zero")
+    
+    if n % 2 == 0:
+        properties.append("even")
+    else:
+        properties.append("odd")
+    
+    if n >= 0 and is_armstrong(n):
+        properties.append("armstrong")
+    
+    return properties
 
 
-def is_armstrong(number: int) -> bool:
-    digits = [int(digit) for digit in str(number)]
-    power = len(digits)
-
-    return sum(d ** power for d in digits) == number
+def get_digit_sum(n: int) -> int:
+    """Calculate the sum of digits."""
+    return sum(int(digit) for digit in str(abs(n)))
 
 
 def get_fun_fact(n: int) -> str:
-    response = requests.get(f'http://numbersapi.com/{ n }/math')
-
-    if response.status_code == 200:
-        return response.text
-
-    return 'No fun fact available.'
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=['*'],  
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
-)
-
-
-@app.get('/api/classify-number')
-def classify_number(number: int = Query(..., description='The number to classify')) -> Dict:
+    """Get a fun fact about the number from the Numbers API."""
     try:
-        properties = []
+        abs_n = abs(n)
+        response = requests.get(f"http://numbersapi.com/{abs_n}/math")
+        if response.status_code == 200:
+            fact = response.text
+            if n < 0:
+                fact = fact.replace(str(abs_n), str(n))  # Replace positive number with negative in the fact
+            return fact
+        return f"{n} is an interesting number."
+    except:
+        return f"{n} is an interesting number."
 
-        if is_armstrong(number):
-            properties.append('armstrong')
 
-        properties.append('odd' if number % 2 else 'even')
+@app.get("/api/classify-number")
+async def classify_number(number: Union[int, str]) -> Dict:
+    """
+    Classify a number and return its properties.
+    """
+    try:
+        num = int(number)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail={        
+                "number": number,
+                "error": True,
+            }
+        )
+    return {
+        "number": num,
+        "is_prime": is_prime(num),
+        "is_perfect": is_perfect(num),
+        "properties": get_properties(num),
+        "digit_sum": get_digit_sum(num),
+        "fun_fact": get_fun_fact(num)
+    }
 
-        return {
-            'number': number,
-            'is_prime': is_prime(number),
-            'is_perfect': is_perfect(number),
-            'properties': properties,
-            'digit_sum': sum(int(digit) for digit in str(number)),
-            'fun_fact': get_fun_fact(number)
-        }
-    except Exception:
-        return {
-            'number': str(number),
-            'error': True
-        }
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
