@@ -25,6 +25,10 @@ This project is part of the **HNG12 Backend Internship - Stage 1 Task**.
 ### Endpoint
 `GET /api/classify-number?number=371`
 
+### Example Request
+```sh
+curl -X GET "https://hng12-backend-s01-number-classification.onrender.com/api/classify-number?number=371"
+```
 
 
 ### Example Response (200 OK)
@@ -35,7 +39,7 @@ This project is part of the **HNG12 Backend Internship - Stage 1 Task**.
     "is_perfect": false,
     "properties": ["armstrong", "odd"],
     "digit_sum": 11,
-    "fun_fact": "371 is an Armstrong number because 3^3 + 7^3 + 1^3 = 371"
+    "fun_fact": "371 is a narcissistic number."
 }
 ```
 
@@ -80,3 +84,6 @@ Open your browser and go to:
 http://127.0.0.1:8000/api/classify-number?number=371
 ```
 
+## Live API
+
+The API is deployed at: https://hng12-backend-s01-number-classification.onrender.com/api/classify-number?number=371
